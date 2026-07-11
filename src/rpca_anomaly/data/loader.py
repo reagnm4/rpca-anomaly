@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from rpca_anomaly import config
+import cv2
 
 
 @dataclass
@@ -38,50 +39,46 @@ class ClipMatrix:
 
 
 def list_clips(split: str = "Test") -> list[Path]:
-    """Return sorted clip directories for a split ("Train" or "Test").
-
-    Must EXCLUDE the *_gt ground-truth mask folders that sit alongside
-    the Test clips.
-    """
-    # TODO(Reagan): implement. Hint: the _gt dirs and real clip dirs
-    # differ only by suffix — decide how you'll filter robustly.
-    raise NotImplementedError
+    root = config.PED2_TEST if split == "Test" else config.PED2_TRAIN
+    return sorted(
+        d for d in root.iterdir()
+        if d.is_dir() and not d.name.endswith("_gt")
+    )
 
 
 def load_frame(path: Path) -> np.ndarray:
-    """Load one TIFF as grayscale float in [0, 1] at native resolution."""
-    # TODO(Reagan): cv2.imread with the right flag, then dtype/scale.
-    # Watch out: cv2.imread returns None (not an exception) on failure.
-    raise NotImplementedError
+    img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        raise FileNotFoundError(f"cv2 could not read frame: {path}")
+    return img.astype(np.float64) / 255.0
 
 
 def preprocess_frame(frame: np.ndarray) -> np.ndarray:
-    """Downsample to (TARGET_H, TARGET_W).
-
-    Choice to justify: which cv2 interpolation flag for *shrinking*
-    an image, and why the default is the wrong one here.
-    """
-    # TODO(Reagan)
-    raise NotImplementedError
+    return cv2.resize(
+        frame,
+        (config.TARGET_W, config.TARGET_H),
+        interpolation=cv2.INTER_AREA,
+    )
 
 
 def frames_to_matrix(frames: np.ndarray) -> np.ndarray:
-    """Stack (n, h, w) preprocessed frames into X ∈ R^(m, n).
+    n = frames.shape[0]
+    return frames.reshape(n, -1).T
 
-    Contract: column j of X is frame j flattened. Be deliberate about
-    reshape order — the SAME order must invert cleanly when Session 3
-    reshapes columns of S back to (h, w). Add a round-trip test.
-    """
-    # TODO(Reagan)
-    raise NotImplementedError
 
 
 def load_clip(clip_dir: Path) -> ClipMatrix:
-    """Full pipeline for one clip: list TIFFs -> load -> preprocess -> X."""
-    # TODO(Reagan): compose the functions above. Sort frame files
-    # numerically (lexicographic sort breaks if names lack zero-padding —
-    # Ped2 is zero-padded, but don't rely on it silently).
-    raise NotImplementedError
+    files = sorted(clip_dir.glob("*.tif"))
+    if not files:
+        raise FileNotFoundError(f"No .tif frames in {clip_dir}")
+    frames = np.stack([preprocess_frame(load_frame(f)) for f in files])
+    X = frames_to_matrix(frames).astype(config.X_DTYPE)
+    return ClipMatrix(
+        X=X,
+        shape=(config.TARGET_H, config.TARGET_W),
+        clip_name=clip_dir.name,
+        n_frames=len(files),
+    )
 
 
 def load_ground_truth_frames(clip_name: str) -> np.ndarray:

@@ -1,0 +1,19 @@
+# data — never commit the dataset
+data/*
+!data/README.md
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.ipynb_checkpoints/
+
+# outputs
+outputs/
+*.mp4
+*.avi
+
+# editor/os
+.vscode/
+.DS_Store

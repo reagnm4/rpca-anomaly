@@ -11,7 +11,7 @@ print(f"converged in {len(history)} iterations, final residual {history[-1]:.2e}
 
 frame = 100
 fig, axes = plt.subplots(1, 3, figsize=(12, 4))
-for ax, mat, title in zip(axes, [clip.X, L, S], ["original", "L (background)", "S (Sparse Foreground)"]):
+for ax, mat, title in zip(axes, [clip.X, L, S], ["Original", "L (Background)", "S (Sparse Foreground)"]):
     ax.imshow(mat[:, frame].reshape(clip.shape), cmap="gray")
     ax.set_title(title)
     ax.axis("off")

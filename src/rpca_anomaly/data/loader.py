@@ -23,15 +23,6 @@ import cv2
 
 @dataclass
 class ClipMatrix:
-    """One clip, ready for RPCA.
-
-    Attributes:
-        X: (m, n) matrix, one flattened frame per column.
-        shape: (h, w) of the preprocessed frames — REQUIRED to reshape
-            columns of S back into 2D anomaly heatmaps in Session 3.
-        clip_name: e.g. "Test001".
-        n_frames: number of frames (== X.shape[1]).
-    """
     X: np.ndarray
     shape: tuple[int, int]
     clip_name: str

@@ -25,6 +25,7 @@ frame-level and pixel-level ground-truth anomaly labels.
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 bash scripts/download_ucsd.sh   # ~700MB, extracts to data/
+pip install -e .
 ```
 
 ## Layout

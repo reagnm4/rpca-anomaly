@@ -15,7 +15,7 @@ frame-level and pixel-level ground-truth anomaly labels.
 ## Status
 
 - [X] Session 1 — Repo, data loading, preprocessing, X-matrix construction
-- [ ] Session 2 — IALM / PCP core (SVT, low-rank + sparse decomposition)
+- [X] Session 2 — IALM / PCP core (SVT, low-rank + sparse decomposition)
 - [ ] Session 3 — Detection pipeline (heatmaps, temporal anomaly scores, viz)
 - [ ] Session 4 — Evaluation vs PCA baseline, ROC-AUC/F1 on Ped2, demo
 

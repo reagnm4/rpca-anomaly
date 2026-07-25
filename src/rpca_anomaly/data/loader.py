@@ -1,15 +1,3 @@
-"""Ped2 loading, preprocessing, and X-matrix construction.
-
-Session 1 core — implement the TODOs below. Everything downstream
-(IALM in Session 2, heatmaps in Session 3) consumes what this module
-produces, so lock the contract now:
-
-    X ∈ R^(m x n),  m = TARGET_H * TARGET_W pixels,  n = frames,
-    column j = frame j flattened; values in [0, 1].
-
-Ped2 ships as ordered grayscale TIFFs per clip (001.tif, 002.tif, ...),
-not video files — "frame extraction" = sorted load, not decoding.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,6 +7,7 @@ import numpy as np
 
 from rpca_anomaly import config
 import cv2
+import re
 
 
 @dataclass
@@ -72,10 +61,16 @@ def load_clip(clip_dir: Path) -> ClipMatrix:
     )
 
 
-def load_ground_truth_frames(clip_name: str) -> np.ndarray:
-    """Frame-level anomaly labels (0/1 per frame) parsed from UCSDped2.m.
+def load_ground_truth_frames(clip_name: str, n_frames: int) -> np.ndarray:
+    m_path = list_clips("Test")[0].parent / "UCSDped2.m"
+    blocks = re.findall(r"gt_frame\s*=\s*\[([^\]]+)\]", m_path.read_text())
 
-    Needed in Session 4 for ROC-AUC / F1 — stub is fine today.
-    """
-    # TODO(Session 4)
-    raise NotImplementedError
+    idx = int(clip_name.removeprefix("Test")) - 1
+    if not 0 <= idx < len(blocks):
+        raise ValueError(f"{clip_name}: no gt entry (found {len(blocks)} clips)")
+
+    labels = np.zeros(n_frames, dtype=int)
+    for part in blocks[idx].split(","):
+        start, end = (int(v) for v in part.split(":"))
+        labels[start - 1:end] = 1
+    return labels

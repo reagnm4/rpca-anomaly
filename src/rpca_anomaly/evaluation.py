@@ -247,3 +247,81 @@ def compute_metrics(labels: np.ndarray, scores: np.ndarray) -> dict:
         "f1_threshold": threshold,
         "f1_all_positive": f1_all_positive,
     }
+
+
+def _score_bins(scores: np.ndarray, n_bins: int = 60) -> np.ndarray:
+    scores = np.asarray(scores, dtype=float)
+    return np.linspace(float(scores.min()), float(scores.max()), n_bins)
+
+
+def overlap_diagnostics(scores: np.ndarray, labels: np.ndarray, n_bins: int = 60) -> dict:
+    """Distribution-overlap diagnostics for the Step-2 reject gate.
+
+    These describe how separated the normal/anomalous score distributions are;
+    they are NOT detection metrics. `cohens_d` is the standardized mean gap
+    (positive = anomalous higher, the hypothesised direction); `overlap` is the
+    overlapping coefficient of the two density histograms (1 = identical,
+    0 = disjoint). Shares `_score_bins` with `save_energy_histogram`, so the
+    reported overlap matches the drawn plot.
+    """
+    normal, anom = split_by_label(scores, labels)
+    pooled_var = (normal.var() * normal.size + anom.var() * anom.size) / (
+        normal.size + anom.size
+    )
+    pooled_std = float(np.sqrt(pooled_var))
+    cohens_d = (
+        float((anom.mean() - normal.mean()) / pooled_std)
+        if pooled_std > 0
+        else float("nan")
+    )
+    bins = _score_bins(scores, n_bins)
+    hn, _ = np.histogram(normal, bins=bins, density=True)
+    ha, _ = np.histogram(anom, bins=bins, density=True)
+    overlap = float(np.sum(np.minimum(hn, ha) * np.diff(bins)))
+    return {
+        "normal_mean": float(normal.mean()),
+        "anom_mean": float(anom.mean()),
+        "direction_ok": bool(anom.mean() > normal.mean()),
+        "cohens_d": cohens_d,
+        "overlap": overlap,
+    }
+
+
+def save_energy_histogram(
+    scores: np.ndarray,
+    labels: np.ndarray,
+    path: str | Path,
+    n_bins: int = 60,
+) -> Path:
+    """Density-normalized split histogram (normal vs anomalous) -> `path`.
+
+    Density normalization is deliberate: the classes are very imbalanced
+    (~1648 anomalous / 362 normal), so raw counts would bury the normal class.
+    matplotlib is imported lazily so the pure-logic paths of this module do not
+    depend on it.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    normal, anom = split_by_label(scores, labels)
+    bins = _score_bins(scores, n_bins)
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.hist(normal, bins=bins, density=True, alpha=0.55, color="#4C78A8",
+            label=f"normal (n={normal.size})")
+    ax.hist(anom, bins=bins, density=True, alpha=0.55, color="#E45756",
+            label=f"anomalous (n={anom.size})")
+    ax.axvline(float(normal.mean()), color="#4C78A8", ls="--", lw=1.2)
+    ax.axvline(float(anom.mean()), color="#E45756", ls="--", lw=1.2)
+    ax.set_xlabel("frame score   (sum |S| over pixels)")
+    ax.set_ylabel("density")
+    ax.set_title("Ped2 per-frame sparse energy by ground-truth label")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    return out

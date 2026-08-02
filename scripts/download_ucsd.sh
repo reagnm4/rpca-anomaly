@@ -4,7 +4,7 @@
 set -euo pipefail
 
 DATA_DIR="$(cd "$(dirname "$0")/.." && pwd)/data"
-URL="http://www.svcl.ucsd.edu/projects/anomaly/UCSD_Anomaly_Dataset.tar.gz"
+URL="https://www.svcl.ucsd.edu/projects/anomaly/UCSD_Anomaly_Dataset.tar.gz"
 ARCHIVE="$DATA_DIR/UCSD_Anomaly_Dataset.tar.gz"
 
 mkdir -p "$DATA_DIR"

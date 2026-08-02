@@ -17,7 +17,40 @@ frame-level and pixel-level ground-truth anomaly labels.
 - [X] Session 1 — Repo, data loading, preprocessing, X-matrix construction
 - [X] Session 2 — IALM / PCP core (SVT, low-rank + sparse decomposition)
 - [X] Session 3 — Detection pipeline (heatmaps, temporal anomaly scores, viz)
-- [ ] Session 4 — Evaluation vs PCA baseline, ROC-AUC/F1 on Ped2, demo
+- [X] Session 4 — Frame-level evaluation on Ped2 (ROC-AUC, PR-AUC, F1)
+
+## Results (Session 4)
+
+Frame-level evaluation across **all 12 Ped2 test clips** (2010 frames, 1648
+anomalous / 362 normal — 82% positive). Score reduction: **total sparse energy
+per frame**, `score(t) = Σ|S[:, t]|` (raw, un-normalized). Regenerate with one
+command: `python scripts/evaluate_ped2.py`.
+
+| metric | value | baseline | note |
+|---|---|---|---|
+| ROC-AUC | 0.628 | 0.500 | headline; chance |
+| PR-AUC (anomalous = pos) | 0.872 | 0.820 | baseline = prevalence |
+| PR-AUC (normal = pos) | 0.417 | 0.180 | minority class |
+| F1 (best threshold) | 0.915 | 0.901 | baseline = all-positive |
+
+A weak but genuine signal. ROC-AUC 0.628 is above chance yet far below published
+Ped2 methods (0.90+) — expected for vanilla batch RPCA with the crudest possible
+reduction (raw sparse magnitude), no spatial or temporal modeling.
+
+The imbalance metrics keep it honest. Ped2 is 82% anomalous, so a trivial
+all-positive predictor already scores F1 0.901 and PR-AUC 0.820; the detector
+beats those by only **+0.014** and **+0.052**. The informative number is
+minority-class PR-AUC — **0.417 vs 0.180** baseline (~2.3×) — so raw energy
+separates *normal* (low-energy) frames far better than it flags anomalies.
+Anomalous frames do carry more sparse energy (Cohen's d = +0.589), but with
+0.441 distribution overlap it is a poor separator, and the pooled ROC-AUC is
+partly cross-clip energy differences (4 clips are 100% anomalous).
+
+This resolves the Session 3 open question below: the Test001 ROC-AUC inversion
+(0.122) was **clip-specific, not a property of the method** — pooled across all
+twelve clips with raw L1 energy, the direction is correct.
+
+![sparse energy by ground-truth label](figures/ped2_energy_hist.png)
 
 ## Results (Session 3)
 
@@ -45,7 +78,15 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 bash scripts/download_ucsd.sh   # ~700MB, extracts to data/
 pip install -e .
+
+# Session-4 evaluation (offline / batch — nothing real-time):
+python scripts/build_labels.py          # Step 1: labels + alignment proof
+python scripts/score_and_histograms.py  # Step 2: Σ|S| scores + split histograms
+python scripts/evaluate_ped2.py         # Step 3: ROC-AUC / PR-AUC / F1 table
 ```
+
+The first scoring run decomposes all 12 test clips with IALM (a few minutes)
+and caches `outputs/<clip>.npz`; later runs reuse the cache.
 
 ## Layout
 
